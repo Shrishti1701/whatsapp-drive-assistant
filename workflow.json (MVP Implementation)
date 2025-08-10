@@ -1,0 +1,68 @@
+{
+  "name": "WhatsApp Google Drive Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Twilio WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $json['Body']?.trim() || '';\nconst parts = msg.split(' ');\nreturn [{ command: parts[0].toUpperCase(), args: parts.slice(1) }];"
+      },
+      "id": "2",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "driveId": "",
+        "options": { "q": "mimeType!='application/vnd.google-apps.folder'" }
+      },
+      "id": "3",
+      "name": "Google Drive - List Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 2,
+      "position": [600, 200],
+      "credentials": { "googleApi": "Google API" }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { reply: 'Files listed: ' + items.map(i => i.json.name).join(', ') } }];"
+      },
+      "id": "4",
+      "name": "Format List Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "from": "+14155238886",
+        "to": "={{$json[\"From\"]}}",
+        "message": "={{$json[\"reply\"]}}"
+      },
+      "id": "5",
+      "name": "Reply via Twilio",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1000, 200],
+      "credentials": { "twilioApi": "Twilio API" }
+    }
+  ],
+  "connections": {
+    "Twilio WhatsApp Webhook": { "main": [[{ "node": "Parse Command", "type": "main", "index": 0 }]] },
+    "Parse Command": { "main": [[{ "node": "Google Drive - List Files", "type": "main", "index": 0 }]] },
+    "Google Drive - List Files": { "main": [[{ "node": "Format List Response", "type": "main", "index": 0 }]] },
+    "Format List Response": { "main": [[{ "node": "Reply via Twilio", "type": "main", "index": 0 }]] }
+  }
+}
